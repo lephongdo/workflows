@@ -1,0 +1,47 @@
+name: Build Unsigned IPA for Sideloading
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Unsigned App
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build App (No Signing)
+        run: |
+          # Ép xcodebuild bỏ qua toàn bộ quy trình kiểm tra chứng chỉ
+          xcodebuild clean build \
+            -project StableAction.xcodeproj \
+            -scheme StableAction \
+            -configuration Release \
+            -sdk iphoneos \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            SYMROOT=$PWD/build \
+            OBJROOT=$PWD/build
+
+      - name: Package into IPA
+        run: |
+          # Tạo thư mục Payload (cấu trúc bắt buộc của file IPA)
+          mkdir -p Payload
+          
+          # Di chuyển thư mục .app vừa build xong vào Payload
+          mv build/Release-iphoneos/*.app Payload/
+          
+          # Nén lại thành định dạng .ipa
+          zip -qr StableAction-Unsigned.ipa Payload
+
+      - name: Upload Unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: StableAction-Unsigned
+          path: StableAction-Unsigned.ipa
+          retention-days: 7
